@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="/static/d3.min.js" charset="UTF-8"></script>
+</head>
+<body>
+    
+    <svg width = "1600" height = "800" id="mainsvg" class = "svgs" style = "margin-top: 60px;"></svg>
+    <script>
+        const data = [
+            {name : "张三", value : 6},
+            {name : "李四", value : 7},
+            {name : "王五", value : 35},
+            {name : "江六", value : 68},
+            {name : "傻逼", value : 13},
+            {name : "大春", value : 34},
+            {name : "小倩", value : 37},
+            {name : "辰辰", value : 57},
+            {name : "巴嘎", value : 68},
+            {name : "程程", value : 27},
+            {name : "安欣", value : 46},
+            {name : "李响", value : 31}
+        ]
+
+        const svg = d3.select('#mainsvg')
+        const width = +svg.attr('width')
+        const height = +svg.attr('height')
+        const margin = {top:60, right:30, bottom:60, left:150}
+        const innerWidth = width - margin.left - margin.right
+        const innerHeight = height - margin.bottom - margin.top
+
+        const Xscale = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value)])
+        .range([0, innerWidth])
+
+        const Yscale = d3.scaleBand()
+        .domain(data.map(d => d.name))
+        .range([0, innerHeight])
+        .padding(0.1)
+
+        const g = svg.append('g').attr('id', 'maingroup')
+        .attr('transform', `translate(${margin.left},${margin.top})`)
+
+        const yAxis = d3.axisLeft(Yscale)
+        g.append('g').call(yAxis)
+
+        const xAxis = d3.axisBottom(Xscale)
+        g.append('g').call(xAxis)
+        .attr('transform', `translate(0, ${innerHeight})`)
+
+        data.forEach( d=> {
+            g.append('rect')
+            .attr('width', Xscale(d.value))
+            .attr('height', Yscale.bandwidth())
+            .attr('fill', '#A3B6C9')
+            .attr('y', Yscale(d.name))
+        }
+        )
+        
+        d3.selectAll('.tick text').attr('font-size', '2em')
+        g.append('text').text('条形图示例')
+        .attr('font-size', '3em')
+        .attr('text-anchor', 'middle')
+        .attr('transform', `translate(${innerWidth / 2}, 0)`)
+    </script>
+</body>
+</html>

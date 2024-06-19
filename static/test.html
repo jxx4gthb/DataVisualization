@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Dashboard</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .chart {
+            display: inline-block;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="bar-chart" class="chart"></div>
+    <div id="line-chart" class="chart"></div>
+    <div id="pie-chart" class="chart"></div>
+    <div id="map-chart" class="chart"></div>
+
+    <script>
+        // Bar Chart
+        const barData = [30, 80, 45, 60, 20, 90, 50];
+        const barWidth = 300;
+        const barHeight = 200;
+
+        const barSvg = d3.select("#bar-chart")
+            .append("svg")
+            .attr("width", barWidth)
+            .attr("height", barHeight);
+
+        barSvg.selectAll("rect")
+            .data(barData)
+            .enter()
+            .append("rect")
+            .attr("x", (d, i) => i * (barWidth / barData.length))
+            .attr("y", d => barHeight - d)
+            .attr("width", barWidth / barData.length - 2)
+            .attr("height", d => d)
+            .attr("fill", "steelblue");
+
+        // Line Chart
+        const lineData = [5, 20, 36, 10, 10, 25, 40];
+        const lineWidth = 300;
+        const lineHeight = 200;
+
+        const lineSvg = d3.select("#line-chart")
+            .append("svg")
+            .attr("width", lineWidth)
+            .attr("height", lineHeight);
+
+        const line = d3.line()
+            .x((d, i) => i * (lineWidth / lineData.length))
+            .y(d => lineHeight - d);
+
+        lineSvg.append("path")
+            .datum(lineData)
+            .attr("fill", "none")
+            .attr("stroke", "steelblue")
+            .attr("stroke-width", 1.5)
+            .attr("d", line);
+
+        // Pie Chart
+        const pieData = [10, 20, 30, 40];
+        const pieWidth = 200;
+        const pieHeight = 200;
+        const radius = Math.min(pieWidth, pieHeight) / 2;
+
+        const pieSvg = d3.select("#pie-chart")
+            .append("svg")
+            .attr("width", pieWidth)
+            .attr("height", pieHeight)
+            .append("g")
+            .attr("transform", `translate(${pieWidth / 2}, ${pieHeight / 2})`);
+
+        const pie = d3.pie();
+        const arc = d3.arc()
+            .innerRadius(0)
+            .outerRadius(radius);
+
+        const arcs = pieSvg.selectAll("arc")
+            .data(pie(pieData))
+            .enter()
+            .append("g")
+            .attr("class", "arc");
+
+        arcs.append("path")
+            .attr("d", arc)
+            .attr("fill", (d, i) => d3.schemeCategory10[i]);
+
+        // Map Chart (using a simple GeoJSON example)
+        const mapWidth = 300;
+        const mapHeight = 200;
+
+        const mapSvg = d3.select("#map-chart")
+            .append("svg")
+            .attr("width", mapWidth)
+            .attr("height", mapHeight);
+
+        const projection = d3.geoMercator()
+            .scale(100)
+            .translate([mapWidth / 2, mapHeight / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        d3.json("https://d3js.org/world-110m.v1.json").then(world => {
+            mapSvg.append("path")
+                .datum(topojson.feature(world, world.objects.countries))
+                .attr("d", path)
+                .attr("fill", "#ccc")
+                .attr("stroke", "#333");
+        });
+    </script>
+</body>
+</html>

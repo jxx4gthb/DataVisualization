@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可视化</title>
+    <script src="/static/d3.min.js"></script>
+    <script type="text/javascript" src="https://api.map.baidu.com/api?v=3.0&ak=XiKbHf1WRR4nsLpguOdR9L0fttJhMQtl"></script>
+    <style>
+        /* iframe {
+            position: absolute;
+            top: 466px;
+            left: 822px;
+            width: 50%;
+            height: 50%;
+            transform: scale(1.0);
+            transform-origin: 0 0;
+        } */
+        
+        h1 {
+            width: 100%;
+            height: 5%;
+            text-align: center;
+        }
+
+        body, html {
+            width: 100%;
+            height: 95%;
+            margin: 0;
+            font-family: "微软雅黑";
+            /* display: flex; */
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            width: 100%;
+            height: 100%;
+        }
+        .box {
+            width: 50%;
+            height: 50%;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        #region-map {
+            width: 50%;
+            height: 50%;
+        }
+        
+        .axis text {
+            font-size: 12px;
+        }
+        .axis path,
+        .axis line {
+            fill: none;
+            shape-rendering: crispEdges;
+        }
+        .legend {
+            font-size: 12px;
+        }
+
+        #secondsvg {
+            margin-left: 20px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>重庆市网吧数据可视化大屏</h1>
+    <div class="container">
+        <div class="box">
+            <select id="color-metric">
+                <option value="网吧总数">网吧总数</option>
+                <option value="接纳未成年网吧数">接纳未成年网吧数</option>
+                <option value="冒用信息网吧数">冒用信息网吧数</option>
+            </select>
+            <svg width="900" height="550" id="mainsvg" class="svgs" style="border: 1px solid black;"></svg>
+        </div>
+        <div id="region-map" class="box" style="border: 1px solid black;"></div>
+        <div class="box">
+            <svg width="900" height="600" id="secondsvg" class="svgs" style="border: 1px solid black;"></svg>
+        </div>
+        <div class="box"><iframe src="http://127.0.0.1:5000/dtsdt" width="900" height="640" title="Example iframe"></iframe></div>
+        
+    </div>
+    <script>
+        // 百度地图API功能
+        var map = new BMap.Map("region-map");  // 创建Map实例
+        map.centerAndZoom("江北区", 12);      // 初始化地图,用城市名设置地图中心点
+    </script>
+
+    <script>
+        // Map data from CSV file
+        const districtData = {
+            "江北区": { "网吧总数": 142, "接纳未成年网吧数": 59, "冒用信息网吧数": 40 },
+            "渝北区": { "网吧总数": 262, "接纳未成年网吧数": 21, "冒用信息网吧数": 99 },
+            "南岸区": { "网吧总数": 184, "接纳未成年网吧数": 2, "冒用信息网吧数": 50 },
+            "沙坪坝区": { "网吧总数": 220, "接纳未成年网吧数": 4, "冒用信息网吧数": 61 },
+            "渝中区": { "网吧总数": 170, "接纳未成年网吧数": 2, "冒用信息网吧数": 42 },
+            "九龙坡区": { "网吧总数": 333, "接纳未成年网吧数": 6, "冒用信息网吧数": 94 },
+            "大渡口区": { "网吧总数": 53, "接纳未成年网吧数": 0, "冒用信息网吧数": 13 },
+            "巴南区": { "网吧总数": 125, "接纳未成年网吧数": 0, "冒用信息网吧数": 18 },
+            "北碚区": { "网吧总数": 178, "接纳未成年网吧数": 3, "冒用信息网吧数": 23 },
+            "江津区": { "网吧总数": 105, "接纳未成年网吧数": 1, "冒用信息网吧数": 15 },
+            "大足区": { "网吧总数": 60, "接纳未成年网吧数": 0, "冒用信息网吧数": 6 },
+            "璧山区": { "网吧总数": 58, "接纳未成年网吧数": 0, "冒用信息网吧数": 6 },
+            "云阳县": { "网吧总数": 49, "接纳未成年网吧数": 27, "冒用信息网吧数": 3 },
+            "丰都县": { "网吧总数": 74, "接纳未成年网吧数": 14, "冒用信息网吧数": 3 },
+            "忠县": { "网吧总数": 67, "接纳未成年网吧数": 1, "冒用信息网吧数": 2 },
+            "秀山土家族苗族自治县": { "网吧总数": 66, "接纳未成年网吧数": 0, "冒用信息网吧数": 4 },
+            "垫江县": { "网吧总数": 58, "接纳未成年网吧数": 25, "冒用信息网吧数": 1 },
+            "巫溪县": { "网吧总数": 22, "接纳未成年网吧数": 0, "冒用信息网吧数": 2 },
+            "酉阳土家族苗族自治县": { "网吧总数": 52, "接纳未成年网吧数": 0, "冒用信息网吧数": 3 },
+            "石柱土家族自治县": { "网吧总数": 15, "接纳未成年网吧数": 0, "冒用信息网吧数": 1 },
+            "开州区": { "网吧总数": 71, "接纳未成年网吧数": 0, "冒用信息网吧数": 2 },
+            "巫山县": { "网吧总数": 53, "接纳未成年网吧数": 0, "冒用信息网吧数": 0 },
+            "荣昌区": { "网吧总数": 68, "接纳未成年网吧数": 0, "冒用信息网吧数": 15 },
+            "长寿区": { "网吧总数": 71, "接纳未成年网吧数": 0, "冒用信息网吧数": 10 },
+            "万州区": { "网吧总数": 178, "接纳未成年网吧数": 77, "冒用信息网吧数": 10 },
+            "黔江区": { "网吧总数": 47, "接纳未成年网吧数": 0, "冒用信息网吧数": 2 },
+            "涪陵区": { "网吧总数": 81, "接纳未成年网吧数": 25, "冒用信息网吧数": 11 },
+            "綦江区": { "网吧总数": 101, "接纳未成年网吧数": 31, "冒用信息网吧数": 5 },
+            "奉节县": { "网吧总数": 58, "接纳未成年网吧数": 27, "冒用信息网吧数": 8 },
+            "永川区": { "网吧总数": 134, "接纳未成年网吧数": 0, "冒用信息网吧数": 21 },
+            "梁平区": { "网吧总数": 41, "接纳未成年网吧数": 0, "冒用信息网吧数": 3 },
+            "城口县": { "网吧总数": 9, "接纳未成年网吧数": 0, "冒用信息网吧数": 2 },
+            "彭水苗族土家族自治县": { "网吧总数": 28, "接纳未成年网吧数": 0, "冒用信息网吧数": 0 },
+            "南川区": { "网吧总数": 30, "接纳未成年网吧数": 0, "冒用信息网吧数": 0 },
+            "铜梁区": { "网吧总数": 47, "接纳未成年网吧数": 0, "冒用信息网吧数": 3 },
+            "武隆区": { "网吧总数": 26, "接纳未成年网吧数": 0, "冒用信息网吧数": 0 },
+            "潼南区": { "网吧总数": 61, "接纳未成年网吧数": 1, "冒用信息网吧数": 2 },
+            "合川区": { "网吧总数": 133, "接纳未成年网吧数": 37, "冒用信息网吧数": 14 }
+        };
+
+        let current_selectarea;
+        let current_selectboundary;
+        let metric
+        // 百度地图API功能
+        var map = new BMap.Map("region-map");  // 创建Map实例
+        map.centerAndZoom("重庆市", 8);      // 初始化地图,用城市名设置地图中心点
+        map.enableScrollWheelZoom(true);     //开启鼠标滚轮缩放
+        getBoundary('重庆市',metric);
+
+
+        function getBoundary(current_selectboundary){       
+		var bdary = new BMap.Boundary();
+		bdary.get(current_selectboundary, function(rs){       //获取行政区域
+			console.log(rs.boundaries,'888')
+			map.clearOverlays();        //清除地图覆盖物       
+			var count = rs.boundaries.length; //行政区域的点有多少个
+			if (count === 0) {
+				alert('未能获取当前输入行政区域');
+				return ;
+			}
+          	var pointArray = [];
+			for (var i = 0; i < count; i++) {
+				var ply = new BMap.Polygon(rs.boundaries[i], {strokeWeight: 2, strokeColor: "#ff0000"}); //建立多边形覆盖物
+				map.addOverlay(ply);  //添加覆盖物
+				pointArray = pointArray.concat(ply.getPath());
+			} 
+			map.setViewport(pointArray);    //调整视野  
+			addlabel(current_selectboundary,metric);               
+		});   
+	}
+
+    function addlabel(filename,metric) {
+    var pointArray = [];
+    var optsArray = [];
+    var labelArray = [];
+    var contentArray = [];
+    
+    // 定义一个自定义图标
+    var legalIcon = new BMap.Icon("/static/blank.png", new BMap.Size(25, 25), {
+        // 指定图标的图像大小
+        imageSize: new BMap.Size(25, 25)
+    });
+    var illegalIcon_under18 = new BMap.Icon("/static/red.png", new BMap.Size(25, 25), {
+        // 指定图标的图像大小
+        imageSize: new BMap.Size(25, 25)
+    });
+    var illegalIcon_fake = new BMap.Icon("/static/blue.png", new BMap.Size(25, 25), {
+        // 指定图标的图像大小
+        imageSize: new BMap.Size(25, 25)
+    });
+    var illegalIcon_both = new BMap.Icon("/static/purple.png", new BMap.Size(25, 25), {
+        // 指定图标的图像大小
+        imageSize: new BMap.Size(25, 25)
+    });
+
+    d3.csv(`/static/data/region/${filename}_网吧信息.csv`).then(function(data){
+        data.forEach(d => {
+            let note;
+            d['接待未成年人'] = +d['接待未成年人'];
+            d['接待未成年人数'] = +d['接待未成年人数'];
+            d['身份信息套用'] = +d['身份信息套用'];
+            d['非法信息套用次数'] = +d['非法信息套用次数'];
+            d.lat = +d.lat;
+            d.lng = +d.lng;
+            u18 = d['接待未成年人数'];
+            f = d['非法信息套用次数'];
+            pointArray.push(new BMap.Point(d['lng'],d['lat']));
+            if(d['接待未成年人'] > 0 && d['身份信息套用'] > 0){
+                note = `(接待未成年人[${u18}]+身份信息套用[${f}])`;
+            }else if(d['接待未成年人'] > 0 && metric){
+                note = `(接待未成年人[${u18}])`;
+            }else if(d['身份信息套用'] > 0){
+                note = `(身份信息套用[${f}])`;
+            }else{
+                note = '';
+            }
+            optsArray.push({
+                point: new BMap.Point(d['lng'], d['lat']),
+                title: d['TITLE']+note,
+                under18: d['接待未成年人'],
+                fake: d['身份信息套用']
+            });
+        });
+
+        for(var i = 0; i < optsArray.length; i++) {
+            
+            if (metric === '接纳未成年网吧数' && optsArray[i].under18 === 0) {
+                continue;
+            } else if (metric === '冒用信息网吧数' && optsArray[i].fake === 0) {
+                continue;
+            }
+            
+            let icon;
+            if (optsArray[i].under18 > 0 && optsArray[i].fake > 0) {
+                icon = illegalIcon_both;
+            } else if (optsArray[i].under18 > 0) {
+                icon = illegalIcon_under18;
+            } else if (optsArray[i].fake > 0) {
+                icon = illegalIcon_fake;
+            } else {
+                icon = legalIcon;
+            }
+            
+            let marker = new BMap.Marker(optsArray[i].point, {icon:icon}); // 使用自定义图标创建标记
+            map.addOverlay(marker);
+            addClickHandler(optsArray[i].title, marker);
+        }
+    });
+
+    function addClickHandler(content, marker){
+        marker.addEventListener("click", function(e){
+            openInfo(content, e);
+        });
+    }
+
+    function openInfo(content, e){
+        var opts = {
+            width : 250,     // 信息窗口宽度
+            height: 100,     // 信息窗口高度
+            title : "信息窗口" // 信息窗口标题
+        };
+        var point = new BMap.Point(e.target.getPosition().lng, e.target.getPosition().lat);
+        var infoWindow = new BMap.InfoWindow(content, opts);  // 创建信息窗口对象
+        map.openInfoWindow(infoWindow, point); // 打开信息窗口
+    }
+}
+
+
+
+        class MapVisualization {
+            constructor(svgId, dataUrl, margin) {
+                this.svg = d3.select(svgId);
+                this.width = +this.svg.attr('width');
+                this.height = +this.svg.attr('height');
+                this.margin = margin;
+                this.innerWidth = this.width - margin.left - margin.right;
+                this.innerHeight = this.height - margin.top - margin.bottom;
+                this.g = this.svg.append('g').attr('id', 'maingroup')
+                    .attr('transform', `translate(${margin.left},${margin.top})`);
+                this.dataUrl = dataUrl;
+                this.active = d3.select(null);
+                this.projection = d3.geoIdentity().reflectY(true);
+                this.geoPath = d3.geoPath().projection(this.projection);
+
+                this.loadData();
+                this.addZoom();
+                this.addColorMetricChangeHandler();
+            }
+
+            loadData() {
+                d3.json(this.dataUrl).then(data => {
+                    this.data = data;
+                    this.projection.fitSize([this.innerWidth, this.innerHeight], this.data);
+                    this.render('网吧总数');
+                });
+            }
+
+            render(metric) {
+                const colorScale = d3.scaleSequential(d3.interpolateReds)
+                    .domain([0, d3.max(Object.values(districtData), d => d[metric])]);
+
+                const self = this;
+                this.g.selectAll('path')
+                    .data(this.data.features)
+                    .join('path')
+                    .attr('d', this.geoPath)
+                    .attr('stroke', 'black')
+                    .attr('stroke-width', 1)
+                    .attr('fill', d => {
+                        const district = d.properties.name;
+                        console.log(district);
+                        const value = districtData[district] ? districtData[district][metric] : 0;
+                        return colorScale(value);
+                    })
+                    .on('click', function(event, d) {
+                        self.handleRegionClick(this, d);
+                        current_selectarea = d.properties.name;
+                        map.centerAndZoom(current_selectarea,10);
+                        getBoundary(current_selectarea,metric);
+                        barChart.updatePattern(current_selectarea);
+                    });
+            }
+
+            handleRegionClick(element, d) {
+                if (this.active.node() === element) {
+                    this.reset();
+                    getBoundary('重庆市',metric);
+                    
+                    return;
+                }
+
+                this.active.classed('active', false);
+                this.active = d3.select(element).classed('active', true);
+
+                const [[x0, y0], [x1, y1]] = this.geoPath.bounds(d);
+                const scale = Math.min(this.innerWidth / (x1 - x0), this.innerHeight / (y1 - y0)) * 0.8;
+                const translate = [this.innerWidth / 2 - scale * (x0 + x1) / 2, this.innerHeight / 2 - scale * (y0 + y1) / 2];
+
+                this.g.transition().duration(750).attr('transform', `translate(${translate[0] + this.margin.left},${translate[1] + this.margin.top}) scale(${scale})`);
+
+                this.g.append('text')
+                    .attr('id', 'region-label')
+                    .attr('x', this.projection(d.properties.center)[0])
+                    .attr('y', this.projection(d.properties.center)[1])
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', '.35em')
+                    .text(d.properties.name)
+                    .attr('font-size', `${50 / scale}px`)
+                    .attr('fill', 'blue')
+                    .attr('stroke', 'yellow')
+                    .attr('stroke-width', 0.2);
+
+                d3.select(element)
+                    .attr('stroke', 'white')
+                    .attr('stroke-width', 1)
+                    .attr('opacity', 0.8);
+            }
+
+            reset() {
+                this.active.classed('active', false);
+                this.active = d3.select(null);
+
+                this.g.transition().duration(750).attr('transform', `translate(${this.margin.left},${this.margin.top}) scale(1)`);
+
+                this.g.selectAll('#region-label').remove();
+
+                this.g.selectAll('path')
+                    .attr('stroke', 'black')
+                    .attr('stroke-width', 1)
+                    .attr('opacity', 1);
+            }
+
+            addZoom() {
+                const self = this;
+                this.svg.call(d3.zoom()
+                    .scaleExtent([1, 8])
+                    .on("zoom", function(event) {
+                        self.g.attr("transform", event.transform);
+                    }));
+            }
+
+            addColorMetricChangeHandler() {
+                const self = this;
+                d3.select('#color-metric').on('change', function() {
+                    metric = d3.select(this).property('value');
+                    self.render(metric);
+                });
+            }
+        }
+
+
+        class BarChart {
+            constructor(data, svgId, margin,pattern = 'all') {
+                this.svg = d3.select(svgId);
+                this.width = +this.svg.attr('width');
+                this.height = +this.svg.attr('height');
+                this.margin = margin;
+                this.data = data;
+                this.innerWidth = this.width - this.margin.left - this.margin.right;
+                this.innerHeight = this.height - this.margin.top - this.margin.bottom;
+                this.pattern = pattern;
+                
+                this.chartArea = this.svg.append("g")
+                    .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+                this.drawlegend();
+            }
+
+            updatePattern(pattern) {
+                this.pattern = pattern;
+                this.render();
+            }
+
+            render() {
+                let dataToRender;
+                if (this.pattern === 'all') {
+                    let totalData = {
+                        district: "重庆市",
+                        "网吧总数": 0,
+                        "接纳未成年网吧数": 0,
+                        "冒用信息网吧数": 0
+                    };
+
+                    Object.keys(this.data).forEach(d => {
+                        totalData["网吧总数"] += this.data[d]["网吧总数"];
+                        totalData["接纳未成年网吧数"] += this.data[d]["接纳未成年网吧数"];
+                        totalData["冒用信息网吧数"] += this.data[d]["冒用信息网吧数"];
+                    });
+
+                    dataToRender = [totalData];
+                } else {
+                    let d = this.pattern;
+                    dataToRender = [{
+                        district: d,
+                        "网吧总数": this.data[d]["网吧总数"],
+                        "接纳未成年网吧数": this.data[d]["接纳未成年网吧数"],
+                        "冒用信息网吧数": this.data[d]["冒用信息网吧数"]
+                    }];
+                }
+
+                this.chartArea.selectAll("*").remove();
+
+                const x0 = d3.scaleBand()
+                    .rangeRound([0, this.innerWidth])
+                    .paddingInner(0.1)
+                    .domain(dataToRender.map(d => d.district));
+
+                const x1 = d3.scaleBand()
+                    .padding(0.05)
+                    .domain(["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"])
+                    .rangeRound([0, x0.bandwidth()]);
+
+                const y = d3.scaleLinear()
+                    .rangeRound([this.innerHeight, 0])
+                    .domain([0, d3.max(dataToRender, d => d3.max(["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"], key => d[key]))]);
+
+                const color = d3.scaleOrdinal()
+                    .range(["#1f77b4", "#ff7f0e", "#2ca02c"])
+                    .domain(["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"]);
+
+                const bars = this.chartArea.append("g")
+                    .selectAll("g")
+                    .data(dataToRender)
+                    .enter().append("g")
+                    .attr("transform", d => `translate(${x0(d.district)},0)`);
+
+                bars.selectAll("rect")
+                    .data(d => ["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"].map(key => ({ key: key, value: d[key] })))
+                    .enter().append("rect")
+                    .attr("x", d => x1(d.key))
+                    .attr("y", d => y(d.value))
+                    .attr("width", x1.bandwidth())
+                    .attr("height", d => this.innerHeight - y(d.value))
+                    .attr("fill", d => color(d.key));
+
+                this.chartArea.append("g")
+                    .attr("class", "axis")
+                    .attr("transform", `translate(0,${this.innerHeight})`)
+                    .call(d3.axisBottom(x0));
+
+                this.chartArea.append("g")
+                    .attr("class", "axis")
+                    .call(d3.axisLeft(y));
+
+                
+                
+            }
+            drawlegend(){
+                const color = d3.scaleOrdinal()
+                    .range(["#1f77b4", "#ff7f0e", "#2ca02c"])
+                    .domain(["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"]);
+                const legend = this.svg.append("g")
+                    .attr("class", "legend")
+                    .attr("transform", `translate(${this.width - this.margin.right - 100}, ${this.margin.top})`);
+
+                const legendItems = ["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"];
+
+                legendItems.forEach((key, i) => {
+                    const legendRow = legend.append("g")
+                        .attr("transform", `translate(0, ${i * 20})`);
+
+                    legendRow.append("rect")
+                        .attr("width", 10)
+                        .attr("height", 10)
+                        .attr("fill", color(key));
+
+                    legendRow.append("text")
+                        .attr("x", 20)
+                        .attr("y", 10)
+                        .attr("text-anchor", "start")
+                        .text(key);
+                });
+            }
+        }
+
+        const margin1 = { top: 60, right: 60, bottom: 10, left: 60 };
+        const margin = { top: 20, right: 20, bottom: 20, left: 40 };
+        const mapVisualization = new MapVisualization('#mainsvg', '/static/data/500000.geoJson', margin1);
+        const barChart = new BarChart(districtData, '#secondsvg',margin);
+        barChart.render();
+    </script>
+</body>
+</html>

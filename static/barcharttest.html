@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>条形图可视化</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .axis text {
+            font-size: 12px;
+        }
+        .axis path,
+        .axis line {
+            fill: none;
+            shape-rendering: crispEdges;
+        }
+        .legend {
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        class BarChart {
+            constructor(data, width = 800, height = 400, pattern = 'all') {
+                this.data = data;
+                this.width = width;
+                this.height = height;
+                this.margin = { top: 20, right: 20, bottom: 50, left: 50 };
+                this.innerWidth = this.width - this.margin.left - this.margin.right;
+                this.innerHeight = this.height - this.margin.top - this.margin.bottom;
+                this.pattern = pattern;
+                this.svg = d3.select("body").append("svg")
+                    .attr("width", this.width)
+                    .attr("height", this.height);
+
+                this.chartArea = this.svg.append("g")
+                    .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+            }
+
+            updatePattern(pattern) {
+                this.pattern = pattern;
+                this.render();
+            }
+
+            render() {
+                let dataToRender;
+                if (this.pattern === 'all') {
+                    let totalData = {
+                        district: "重庆市",
+                        "网吧总数": 0,
+                        "接纳未成年网吧数": 0,
+                        "冒用信息网吧数": 0
+                    };
+
+                    Object.keys(this.data).forEach(d => {
+                        totalData["网吧总数"] += this.data[d]["网吧总数"];
+                        totalData["接纳未成年网吧数"] += this.data[d]["接纳未成年网吧数"];
+                        totalData["冒用信息网吧数"] += this.data[d]["冒用信息网吧数"];
+                    });
+
+                    dataToRender = [totalData];
+                } else {
+                    let d = this.pattern;
+                    dataToRender = [{
+                        district: d,
+                        "网吧总数": this.data[d]["网吧总数"],
+                        "接纳未成年网吧数": this.data[d]["接纳未成年网吧数"],
+                        "冒用信息网吧数": this.data[d]["冒用信息网吧数"]
+                    }];
+                }
+
+                this.chartArea.selectAll("*").remove();
+
+                const x0 = d3.scaleBand()
+                    .rangeRound([0, this.innerWidth])
+                    .paddingInner(0.1)
+                    .domain(dataToRender.map(d => d.district));
+
+                const x1 = d3.scaleBand()
+                    .padding(0.05)
+                    .domain(["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"])
+                    .rangeRound([0, x0.bandwidth()]);
+
+                const y = d3.scaleLinear()
+                    .rangeRound([this.innerHeight, 0])
+                    .domain([0, d3.max(dataToRender, d => d3.max(["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"], key => d[key]))]);
+
+                const color = d3.scaleOrdinal()
+                    .range(["#1f77b4", "#ff7f0e", "#2ca02c"])
+                    .domain(["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"]);
+
+                const bars = this.chartArea.append("g")
+                    .selectAll("g")
+                    .data(dataToRender)
+                    .enter().append("g")
+                    .attr("transform", d => `translate(${x0(d.district)},0)`);
+
+                bars.selectAll("rect")
+                    .data(d => ["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"].map(key => ({ key: key, value: d[key] })))
+                    .enter().append("rect")
+                    .attr("x", d => x1(d.key))
+                    .attr("y", d => y(d.value))
+                    .attr("width", x1.bandwidth())
+                    .attr("height", d => this.innerHeight - y(d.value))
+                    .attr("fill", d => color(d.key));
+
+                this.chartArea.append("g")
+                    .attr("class", "axis")
+                    .attr("transform", `translate(0,${this.innerHeight})`)
+                    .call(d3.axisBottom(x0));
+
+                this.chartArea.append("g")
+                    .attr("class", "axis")
+                    .call(d3.axisLeft(y));
+
+                // 添加图例
+                const legend = this.svg.append("g")
+                    .attr("class", "legend")
+                    .attr("transform", `translate(${this.width - this.margin.right - 100}, ${this.margin.top})`);
+
+                const legendItems = ["网吧总数", "接纳未成年网吧数", "冒用信息网吧数"];
+
+                legendItems.forEach((key, i) => {
+                    const legendRow = legend.append("g")
+                        .attr("transform", `translate(0, ${i * 20})`);
+
+                    legendRow.append("rect")
+                        .attr("width", 10)
+                        .attr("height", 10)
+                        .attr("fill", color(key));
+
+                    legendRow.append("text")
+                        .attr("x", 20)
+                        .attr("y", 10)
+                        .attr("text-anchor", "start")
+                        .text(key);
+                });
+            }
+        }
+
+        const districtData = {
+            "江北区": { "网吧总数": 142, "接纳未成年网吧数": 59, "冒用信息网吧数": 40 },
+            "渝北区": { "网吧总数": 262, "接纳未成年网吧数": 21, "冒用信息网吧数": 99 },
+            "南岸区": { "网吧总数": 184, "接纳未成年网吧数": 2, "冒用信息网吧数": 50 },
+            "沙坪坝区": { "网吧总数": 220, "接纳未成年网吧数": 4, "冒用信息网吧数": 61 },
+            "渝中区": { "网吧总数": 170, "接纳未成年网吧数": 2, "冒用信息网吧数": 42 },
+            "九龙坡区": { "网吧总数": 333, "接纳未成年网吧数": 6, "冒用信息网吧数": 94 },
+            "大渡口区": { "网吧总数": 53, "接纳未成年网吧数": 0, "冒用信息网吧数": 13 },
+            "巴南区": { "网吧总数": 125, "接纳未成年网吧数": 0, "冒用信息网吧数": 18 },
+            "北碚区": { "网吧总数": 178, "接纳未成年网吧数": 3, "冒用信息网吧数": 23 },
+            "江津区": { "网吧总数": 105, "接纳未成年网吧数": 1, "冒用信息网吧数": 15 },
+            "大足区": { "网吧总数": 60, "接纳未成年网吧数": 0, "冒用信息网吧数": 6 },
+            "璧山区": { "网吧总数": 58, "接纳未成年网吧数": 0, "冒用信息网吧数": 6 },
+            "云阳县": { "网吧总数": 49, "接纳未成年网吧数": 27, "冒用信息网吧数": 3 },
+            "丰都县": { "网吧总数": 74, "接纳未成年网吧数": 14, "冒用信息网吧数": 3 },
+            "忠县": { "网吧总数": 67, "接纳未成年网吧数": 1, "冒用信息网吧数": 2 },
+            "秀山土家族苗族自治县": { "网吧总数": 66, "接纳未成年网吧数": 0, "冒用信息网吧数": 4 },
+            "垫江县": { "网吧总数": 58, "接纳未成年网吧数": 25, "冒用信息网吧数": 1 },
+            "巫溪县": { "网吧总数": 22, "接纳未成年网吧数": 0, "冒用信息网吧数": 2 },
+            "酉阳土家族苗族自治县": { "网吧总数": 52, "接纳未成年网吧数": 0, "冒用信息网吧数": 3 },
+            "石柱土家族自治县": { "网吧总数": 15, "接纳未成年网吧数": 0, "冒用信息网吧数": 1 },
+            "开州区": { "网吧总数": 71, "接纳未成年网吧数": 0, "冒用信息网吧数": 2 },
+            "巫山县": { "网吧总数": 53, "接纳未成年网吧数": 0, "冒用信息网吧数": 0 },
+            "荣昌区": { "网吧总数": 68, "接纳未成年网吧数": 0, "冒用信息网吧数": 15 },
+            "长寿区": { "网吧总数": 71, "接纳未成年网吧数": 0, "冒用信息网吧数": 10 },
+            "万州区": { "网吧总数": 178, "接纳未成年网吧数": 77, "冒用信息网吧数": 10 },
+            "黔江区": { "网吧总数": 47, "接纳未成年网吧数": 0, "冒用信息网吧数": 2 },
+            "涪陵区": { "网吧总数": 81, "接纳未成年网吧数": 25, "冒用信息网吧数": 11 },
+            "綦江区": { "网吧总数": 101, "接纳未成年网吧数": 31, "冒用信息网吧数": 5 },
+            "奉节县": { "网吧总数": 58, "接纳未成年网吧数": 27, "冒用信息网吧数": 8 },
+            "永川区": { "网吧总数": 134, "接纳未成年网吧数": 0, "冒用信息网吧数": 21 },
+            "梁平区": { "网吧总数": 41, "接纳未成年网吧数": 0, "冒用信息网吧数": 3 },
+            "城口县": { "网吧总数": 9, "接纳未成年网吧数": 0, "冒用信息网吧数": 2 },
+            "彭水苗族土家族自治县": { "网吧总数": 28, "接纳未成年网吧数": 0, "冒用信息网吧数": 0 },
+            "南川区": { "网吧总数": 30, "接纳未成年网吧数": 0, "冒用信息网吧数": 0 },
+            "铜梁区": { "网吧总数": 47, "接纳未成年网吧数": 0, "冒用信息网吧数": 3 },
+            "武隆区": { "网吧总数": 26, "接纳未成年网吧数": 0, "冒用信息网吧数": 0 },
+            "潼南区": { "网吧总数": 61, "接纳未成年网吧数": 1, "冒用信息网吧数": 2 },
+            "合川区": { "网吧总数": 133, "接纳未成年网吧数": 37, "冒用信息网吧数": 14 }
+        };
+
+        const chart = new BarChart(districtData);
+        chart.render();
+
+        // 更新图表以显示特定区域的数据
+        // chart.updatePattern('江北区');
+    </script>
+</body>
+</html>
